@@ -3,10 +3,10 @@ package academy.spring.springai.songs;
 
 import org.springframework.ai.chat.client.ChatClient;
 
+import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.converter.BeanOutputConverter;
-import org.springframework.ai.converter.StructuredOutputConverter;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 
 @RestController
 @RequestMapping("/songs")
@@ -86,7 +85,8 @@ public class SongsController {
 	public TopSong objectReturnTopSong(@PathVariable("year") int year) {
 		// Create a structured output converter for the TopSong class
 		// see https://docs.spring.io/spring-ai/reference/api/structured-output-converter.html
-		StructuredOutputConverter<TopSong> parser = new BeanOutputConverter<>(TopSong.class);
+//		StructuredOutputConverter<TopSong> parser = new BeanOutputConverter<>(TopSong.class);
+		BeanOutputConverter<TopSong> parser = new BeanOutputConverter<>(TopSong.class);
 
 		String promptText = """
         What was the Billboard number one year-end top 100 single for {year}?
@@ -99,16 +99,38 @@ public class SongsController {
 		promptParams.put("format", parser.getFormat());
 
 		Prompt prompt = promptTemplate.create(promptParams);
+		String userPrompt = prompt.getContents();
+		System.out.println(">> User Prompt: " + userPrompt);
 
-		var chatResponse = chatClient.prompt()
+		ChatResponse chatResponse = chatClient.prompt()
 				.system("You are a music expert.")
-				.user(promptTemplate.render(promptParams))
-				.call();
+				.user(userPrompt)
+				.call()
+				.chatResponse();
 
 		// debugging information
-		logResponse(chatResponse);
+        String content;
+		TopSong topSong = null;
+        if (chatResponse != null) {
+			var result = chatResponse.getResult();
+			System.out.println(">> ChatResponse Result: " + result);
 
-		TopSong topSong = parser.convert(Objects.requireNonNull(chatResponse.content()));
+            var output = result.getOutput();
+			System.out.println(">> ChatResponse Output: " + output);
+
+			// Get the content from the output
+            content = output.getText();
+			System.out.println(">> content: " + content);
+
+			// Convert the content to a TopSong object using the structured output converter
+			if (content != null && !content.isBlank()) {
+				topSong = parser.convert(content);
+				System.out.println(">> TopSong: " + topSong);
+			} else {
+				System.out.println(">> No content received from chat response.");
+			}
+		}
+
 		return topSong;
 	}
 

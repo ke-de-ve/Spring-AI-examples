@@ -11,5 +11,8 @@ public class SongsApplication {
 	}
 
 	//TODO: Create new ImageClient Bean
-
+//	@Bean
+//	ImageClient imageClient(@Value("${spring.ai.openai.api-key}") String apiKey) {
+//		return new OpenAiImageClient(new OpenAiImageApi(apiKey));
+//	}
 }
